@@ -3,6 +3,14 @@
 
 import sys
 import os
+import sys
+try:
+    import distutils.version
+except ImportError:
+    import setuptools._distutils.version
+    sys.modules['distutils.version'] = setuptools._distutils.version
+    import distutils
+    distutils.version = setuptools._distutils.version
 
 # 添加项目路径
 sys.path.insert(0, os.path.abspath('.'))
