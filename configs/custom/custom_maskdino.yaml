@@ -67,7 +67,7 @@ DATALOADER:
 
 
 SOLVER:
-  IMS_PER_BATCH: 8  # 根据你的GPU内存调整，如果内存不够可以改为4或2
+  IMS_PER_BATCH: 1  # 根据你的GPU内存调整，如果内存不够可以改为4或2
   BASE_LR: 0.0001
   STEPS: (30000, 40000)  # 根据数据集大小调整
   MAX_ITER: 50000  # 总训练步数
