@@ -16,18 +16,31 @@ def register_custom_dataset():
     train_json = os.path.join(DATASET_ROOT, "annotations/lis_coco_JPG_train+1.json")
     train_images = os.path.join(DATASET_ROOT, "images")
 
-
+    if os.path.exists(train_json) and os.path.exists(train_images):
+        register_coco_instances("custom_train", {}, train_json, train_images)
+        print(f"✓ 训练集注册成功: {train_json}")
+    else:
+        print(f"✗ 训练集路径不存在: {train_json} 或 {train_images}")
 
     # 注册验证集
     val_json = os.path.join(DATASET_ROOT, "annotations/lis_coco_JPG_test+1.json")
     val_images = os.path.join(DATASET_ROOT, "images")
 
-
+    if os.path.exists(val_json) and os.path.exists(val_images):
+        register_coco_instances("custom_val", {}, val_json, val_images)
+        print(f"✓ 验证集注册成功: {val_json}")
+    else:
+        print(f"✗ 验证集路径不存在: {val_json} 或 {val_images}")
 
     # 注册测试集
     test_json = os.path.join(DATASET_ROOT, "annotations/lis_coco_JPG_test+1.json")
     test_images = os.path.join(DATASET_ROOT, "images")
 
+    if os.path.exists(test_json) and os.path.exists(test_images):
+        register_coco_instances("custom_test", {}, test_json, test_images)
+        print(f"✓ 测试集注册成功: {test_json}")
+    else:
+        print(f"✗ 测试集路径不存在: {test_json} 或 {test_images}")
 
     # 从注解文件中自动获取类别
     import json
