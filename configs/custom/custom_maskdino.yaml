@@ -56,7 +56,6 @@ MODEL:
 
 DATASETS:
   TRAIN: ("custom_train",)
-  VAL: ("custom_val",)
   TEST: ("custom_test",)
 
 # 训练参数
