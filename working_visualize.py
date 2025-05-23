@@ -6,6 +6,7 @@ import argparse
 import os
 import cv2
 import torch
+import numpy as np
 from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer, ColorMode
@@ -24,6 +25,43 @@ from maskdino import add_maskdino_config
 import train_custom
 
 
+def get_all_images(image_folder):
+    """获取文件夹中所有图像文件，包括子文件夹"""
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.JPG', '.JPEG', '.PNG', '.BMP', '.TIFF',
+                        '.TIF'}
+    image_files = []
+
+    for root, dirs, files in os.walk(image_folder):
+        for file in files:
+            if any(file.endswith(ext) for ext in image_extensions):
+                image_files.append(os.path.join(root, file))
+
+    return sorted(image_files)
+
+
+def visualize_clean_masks(image, instances, metadata):
+    """
+    只显示mask，不显示边界框、置信度和类别名称
+    """
+    # 创建可视化器
+    v = Visualizer(image[:, :, ::-1], metadata=metadata, scale=1.0, instance_mode=ColorMode.IMAGE)
+
+    if len(instances) > 0 and instances.has("pred_masks"):
+        masks = instances.pred_masks
+
+        # 为每个mask分配随机颜色
+        colors = []
+        for i in range(len(masks)):
+            colors.append(np.random.rand(3))
+
+        # 只绘制masks，不绘制框和标签
+        for i, mask in enumerate(masks):
+            mask_array = mask.numpy().astype(bool)
+            v.draw_binary_mask(mask_array, color=colors[i], alpha=0.6)
+
+    return v.get_output()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", default="configs/custom/custom_maskdino.yaml")
@@ -31,14 +69,18 @@ def main():
     parser.add_argument("--output-dir", default="./vis_output")
     parser.add_argument("--confidence-threshold", type=float, default=0.5)
     parser.add_argument("--weights", required=True)
-    parser.add_argument("--max-images", type=int, default=50)
+    # 移除max-images限制，改为可选参数，默认处理所有图像
+    parser.add_argument("--max-images", type=int, default=None, help="最大处理图像数量，不设置则处理所有图像")
     parser.add_argument("--debug", action="store_true", help="显示调试信息")
+    # 添加选项来控制是否显示边界框和标签
+    parser.add_argument("--clean-output", action="store_true", default=True, help="只显示mask，不显示边界框和标签")
     parser.add_argument("opts", default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     print(f"配置文件: {args.config_file}")
     print(f"模型权重: {args.weights}")
     print(f"置信度阈值: {args.confidence_threshold}")
+    print(f"清洁输出模式: {args.clean_output}")
 
     # 设置配置
     cfg = get_cfg()
@@ -82,13 +124,20 @@ def main():
     # 创建输出目录
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # 获取图像列表
-    image_files = []
-    for ext in ['*.jpg', '*.JPG', '*.jpeg', '*.png', '*.PNG']:
-        image_files.extend(glob.glob(os.path.join(args.image_folder, ext)))
-    image_files = sorted(image_files)[:args.max_images]
+    # 获取图像列表 - 修改这里来处理所有图像
+    print("正在扫描图像文件...")
+    image_files = get_all_images(args.image_folder)
+
+    # 如果设置了max_images，则限制数量
+    if args.max_images is not None:
+        image_files = image_files[:args.max_images]
+        print(f"限制处理图像数量为: {args.max_images}")
 
     print(f"找到 {len(image_files)} 张图像")
+
+    if len(image_files) == 0:
+        print("未找到任何图像文件！")
+        return
 
     success = 0
     failed = 0
@@ -131,9 +180,6 @@ def main():
                                 if any(c >= num_classes for c in classes):
                                     print(f"警告: 某些类别ID超出范围 (最大值应为{num_classes - 1})")
 
-            # 可视化
-            v = Visualizer(img[:, :, ::-1], metadata=metadata, scale=1.0)
-
             # 处理输出
             vis_output = None
             if "instances" in outputs:
@@ -145,13 +191,22 @@ def main():
                         instances = instances[keep]
 
                     if len(instances) > 0:
-                        vis_output = v.draw_instance_predictions(instances)
+                        # 根据clean_output参数选择可视化方式
+                        if args.clean_output:
+                            # 只显示mask，不显示边界框和标签
+                            vis_output = visualize_clean_masks(img, instances, metadata)
+                        else:
+                            # 显示完整的检测结果（边界框、标签、置信度）
+                            v = Visualizer(img[:, :, ::-1], metadata=metadata, scale=1.0)
+                            vis_output = v.draw_instance_predictions(instances)
                     else:
                         # 过滤后没有实例
+                        v = Visualizer(img[:, :, ::-1], metadata=metadata, scale=1.0)
                         vis_output = v.output
                         no_detection += 1
                 else:
                     # 没有检测到物体
+                    v = Visualizer(img[:, :, ::-1], metadata=metadata, scale=1.0)
                     vis_output = v.output
                     no_detection += 1
             else:
