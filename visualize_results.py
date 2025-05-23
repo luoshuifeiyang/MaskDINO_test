@@ -6,10 +6,27 @@ from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
 import glob
+import argparse
+
+def get_parser():
+    parser = argparse.ArgumentParser(description="MaskDINO Visualization")
+    parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
+    parser.add_argument("--opts", help="Modify config options using the command-line", default=[], nargs=argparse.REMAINDER)
+    return parser
+
+# 在脚本开始处添加：
+args = get_parser().parse_args()
+
+
+
+
 
 # 配置
 cfg = get_cfg()
-cfg.merge_from_file("configs/custom/custom_maskdino.yaml")
+if args.config_file:
+    cfg.merge_from_file(args.config_file)
+else:
+    cfg.merge_from_file("configs/custom/custom_maskdino.yaml")
 cfg.MODEL.WEIGHTS = "output/model_final.pth"
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # 设置阈值
 
